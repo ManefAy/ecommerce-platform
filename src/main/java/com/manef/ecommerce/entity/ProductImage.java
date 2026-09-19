@@ -39,7 +39,7 @@ public class ProductImage {
 
     /**
      * Controls the order images appear in the gallery.
-     * displayOrder = 1 → main thumbnail image
+     * displayOrder = 1 → main thumbnail imagec
      * displayOrder = 2 → second image in gallery
      * displayOrder = 3 → third image in gallery
      * and so on...
