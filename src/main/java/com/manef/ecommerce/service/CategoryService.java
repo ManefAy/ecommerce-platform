@@ -6,6 +6,7 @@ import com.manef.ecommerce.entity.Category;
 import com.manef.ecommerce.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,6 +35,7 @@ public class CategoryService {
      *
      * @return → list of CategoryResponse DTOs
      */
+    @Transactional
     public List<CategoryResponse> getAllCategories() {
         /**
          * findByParentIsNull() → only fetch top-level categories
@@ -54,6 +56,7 @@ public class CategoryService {
      * Get a single category by its ID.
      * Used in admin dashboard edit form.
      */
+    @Transactional
     public CategoryResponse getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
@@ -66,6 +69,7 @@ public class CategoryService {
      * Get a single category by its slug.
      * Used in Next.js: /category/electronics
      */
+    @Transactional
     public CategoryResponse getCategoryBySlug(String slug) {
         Category category = categoryRepository.findBySlug(slug)
                 .orElseThrow(() ->
@@ -85,6 +89,7 @@ public class CategoryService {
      * @param request → CategoryRequest DTO from admin
      * @return        → the created CategoryResponse
      */
+    @Transactional
     public CategoryResponse createCategory(CategoryRequest request) {
 
         // Check slug is not already taken
@@ -133,6 +138,7 @@ public class CategoryService {
      * @param request → new data from admin
      * @return        → updated CategoryResponse
      */
+    @Transactional
     public CategoryResponse updateCategory(Long id, CategoryRequest request) {
 
         // Find the existing category
@@ -189,6 +195,7 @@ public class CategoryService {
      *
      * @param id → the category ID to delete
      */
+    @Transactional
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
