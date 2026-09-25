@@ -104,6 +104,11 @@ public class SecurityConfig {
                 // Order tracking — guest customers can
                 // track their order by order number
                 .requestMatchers("/api/orders/track/**").permitAll()
+                
+             	// Allow guest customers to place orders without logging in
+             	// We specify HttpMethod.POST so only POST is public
+             	// GET /api/orders still requires authentication
+             	.requestMatchers(org.springframework.http.HttpMethod.POST, "/api/orders").permitAll()
 
                 /**
                  * ADMIN ONLY ROUTES — requires ROLE_ADMIN
