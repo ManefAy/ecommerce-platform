@@ -104,6 +104,15 @@
     		<version>0.11.5</version>
     		<scope>runtime</scope>
 		</dependency>
+		<!-- ================================================ -->
+		<!-- Spring WebFlux — provides WebClient             -->
+		<!-- Used to call external REST APIs                 -->
+		<!-- (Delivery API, Meta Conversions API)            -->
+		<!-- ================================================ -->
+		<dependency>
+    		<groupId>org.springframework.boot</groupId>
+    		<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>
