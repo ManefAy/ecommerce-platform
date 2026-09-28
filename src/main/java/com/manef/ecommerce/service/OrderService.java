@@ -1,5 +1,7 @@
 package com.manef.ecommerce.service;
 
+import com.manef.ecommerce.dto.request.DeliveryRequest;
+import com.manef.ecommerce.dto.response.DeliveryResponse;
 import com.manef.ecommerce.dto.request.OrderRequest;
 import com.manef.ecommerce.dto.response.OrderResponse;
 import com.manef.ecommerce.entity.*;
@@ -46,7 +48,8 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final StockMovementRepository stockMovementRepository;
-
+    private final DeliveryApiService deliveryApiService;
+    private final MetaCapiService metaCapiService;
     // ─────────────────────────────────────────────────────
     // PLACE ORDER — Main checkout flow
     // ─────────────────────────────────────────────────────
@@ -206,13 +209,66 @@ public class OrderService {
             stockMovementRepository.save(movement);
         }
 
+     // ── Step 6: Call Delivery API ──────────────────
         /**
-         * TODO Phase 3:
-         * → Call Delivery API to generate tracking number
-         * → Call Meta Conversions API to send Purchase event
+         * Build our standard delivery request
+         * from the order data.
+         *
+         * weightKg → sum of all item weights
+         * We calculate it by multiplying each product's
+         * weight by its quantity and adding them up.
          */
+        BigDecimal totalWeight = orderItems.stream()
+                .map(item -> item.getProduct().getWeight()
+                        .multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // ── Step 6: Return the order response ──────────
+        DeliveryRequest deliveryRequest = DeliveryRequest.builder()
+                .orderNumber(savedOrder.getOrderNumber())
+                .customerName(savedOrder.getCustomerName())
+                .customerPhone(savedOrder.getCustomerPhone())
+                .shippingAddress(savedOrder.getShippingAddress())
+                .city(savedOrder.getCity())
+                .weightKg(totalWeight)
+                .codAmount(savedOrder.getTotalAmount())
+                .notes(savedOrder.getNotes())
+                .build();
+
+        DeliveryResponse deliveryResponse =
+                deliveryApiService.createShipment(deliveryRequest);
+
+        /**
+         * Update the order with delivery API response data.
+         * Even if the delivery API failed → we still save
+         * what we have and the admin can fix it manually.
+         */
+        if (deliveryResponse.isSuccess()) {
+            savedOrder.setTrackingNumber(deliveryResponse.getTrackingNumber());
+            savedOrder.setShippingFee(deliveryResponse.getShippingFee());
+            savedOrder.setDeliveryApiResponse(deliveryResponse.getRawResponse());
+        } else {
+            /**
+             * Delivery API failed → log it but don't fail the order.
+             * Store the error in deliveryApiResponse for admin to see.
+             * Admin can manually create the shipment later.
+             */
+            savedOrder.setDeliveryApiResponse(
+                    "FAILED: " + deliveryResponse.getErrorMessage()
+            );
+        }
+
+        // Save the updated order with tracking info
+        savedOrder = orderRepository.save(savedOrder);
+
+        // ── Step 7: Send Meta CAPI event (async) ───────
+        /**
+         * This runs in a background thread — customer
+         * doesn't wait for this to complete.
+         * If Meta CAPI fails → order still completes.
+         */
+        metaCapiService.sendPurchaseEvent(savedOrder, orderItems);
+
+        // ── Step 8: Return the order response ──────────
         return mapToResponse(savedOrder, orderItems);
     }
 
