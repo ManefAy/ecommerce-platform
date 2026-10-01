@@ -46,26 +46,20 @@ const useCartStore = create(
        */
       addItem: (product) => {
         const items = get().items;
-
-        // Check if product already in cart
         const existingItem = items.find((item) => item.id === product.id);
 
         if (existingItem) {
-          /**
-           * Product already in cart → increase quantity.
-           * map() creates a new array — we never mutate
-           * the state directly in Zustand.
-           */
           set({
             items: items.map((item) =>
               item.id === product.id
-                ? { ...item, quantity: item.quantity + 1 }
+                ? { ...item, quantity: item.quantity + (product.quantity || 1) }
                 : item,
             ),
           });
         } else {
-          // New product → add with quantity 1
-          set({ items: [...items, { ...product, quantity: 1 }] });
+          set({
+            items: [...items, { ...product, quantity: product.quantity || 1 }],
+          });
         }
       },
 

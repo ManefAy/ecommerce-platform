@@ -1,33 +1,23 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import Image from "next/image";
+import { useState, useEffect } from "react";
 import useCartStore from "@/store/cartStore";
 
-/**
- * BioTouch Navbar Component
- *
- * "use client" → this component uses:
- * → useState (React hook)
- * → useCartStore (Zustand hook)
- * Both require client-side rendering.
- *
- * Features:
- * → BioTouch logo/brand name
- * → Navigation links
- * → Cart icon with item count badge
- * → Mobile responsive hamburger menu
- */
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const items = useCartStore((state) => state.items);
 
-  /**
-   * Get total items from Zustand cart store.
-   * This automatically re-renders when cart changes.
-   */
-  const getTotalItems = useCartStore((state) => state.getTotalItems);
-  const totalItems = getTotalItems();
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  const totalItems = mounted
+    ? items.reduce((total, item) => total + item.quantity, 0)
+    : 0;
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -35,7 +25,7 @@ export default function Navbar() {
         {/* ── LOGO ── */}
         <Link href="/">
           <Image
-            src="/BioTouch_Logo.png"
+            src="/logo.png"
             alt="BioTouch Cosmetics"
             width={150}
             height={48}
@@ -85,7 +75,6 @@ export default function Navbar() {
           {/* Cart Icon with Badge */}
           <Link href="/cart" className="relative">
             <div className="p-2 rounded-full hover:bg-green-50 transition-colors">
-              {/* Cart SVG Icon */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6 text-gray-700"
@@ -101,8 +90,8 @@ export default function Navbar() {
                 />
               </svg>
 
-              {/* Item count badge */}
-              {totalItems > 0 && (
+              {/* Only render badge after client is mounted */}
+              {mounted && totalItems > 0 && (
                 <span className="absolute -top-1 -right-1 bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
                   {totalItems}
                 </span>
