@@ -21,6 +21,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
+  const [notFoundError, setNotFoundError] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -29,6 +30,7 @@ export default function ProductDetailPage() {
         setProduct(response.data);
       } catch (error) {
         console.error("Failed to fetch product:", error);
+        setNotFoundError(true);
       } finally {
         setLoading(false);
       }
@@ -69,19 +71,24 @@ export default function ProductDetailPage() {
   }
 
   // ── NOT FOUND ──
-  if (!product) {
+  if (notFoundError || !product) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-        <div className="text-6xl mb-4">🌿</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          Product not found
-        </h1>
-        <Link
-          href="/"
-          className="text-green-600 hover:text-green-700 font-medium"
-        >
-          ← Back to Home
-        </Link>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-8xl font-bold text-green-600 mb-4">404</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">
+            Product Not Found
+          </h1>
+          <p className="text-gray-500 mb-8">
+            This product does not exist or has been removed.
+          </p>
+          <Link
+            href="/"
+            className="bg-green-600 text-white px-8 py-3 rounded-full font-semibold hover:bg-green-700 transition-colors"
+          >
+            Back to Home
+          </Link>
+        </div>
       </div>
     );
   }
@@ -90,10 +97,11 @@ export default function ProductDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
-
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500 mb-8">
-        <Link href="/" className="hover:text-green-600">Home</Link>
+        <Link href="/" className="hover:text-green-600">
+          Home
+        </Link>
         <span>/</span>
         <Link
           href={`/category/${product.categoryName?.toLowerCase().replace(" ", "-")}`}
@@ -106,7 +114,6 @@ export default function ProductDetailPage() {
       </nav>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-
         {/* ── PRODUCT IMAGE ── */}
         <div className="bg-gray-50 rounded-2xl p-8 flex items-center justify-center min-h-96">
           {product.images?.[0]?.imageUrl ? (
@@ -124,7 +131,6 @@ export default function ProductDetailPage() {
 
         {/* ── PRODUCT INFO ── */}
         <div className="flex flex-col justify-center">
-
           {/* Category badge */}
           <span className="text-sm text-green-600 font-medium uppercase tracking-wide mb-2">
             {product.categoryName}
