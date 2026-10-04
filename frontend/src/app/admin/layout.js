@@ -1,5 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
+import api from "@/lib/axios";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -22,7 +24,6 @@ export default function AdminLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    // Load admin user from localStorage
     const adminUser = localStorage.getItem("admin_user");
 
     if (!adminUser) {
@@ -32,15 +33,34 @@ export default function AdminLayout({ children }) {
 
     const user = JSON.parse(adminUser);
 
-    // Double check role
     if (user.role !== "ROLE_ADMIN") {
       router.push("/");
       return;
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAdmin(user);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    /**
+     * Verify token is still valid by making a test API call.
+     * If token expired → Spring Boot returns 401 or 403
+     * → We clear everything and redirect to login.
+     */
+    api
+      .get("/orders/admin/all", {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      .then(() => {
+        setAdmin(user);
+      })
+      .catch((err) => {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          /**
+           * Token expired or invalid.
+           * Clear everything and redirect to login.
+           */
+          document.cookie = "admin_token=; path=/; max-age=0; SameSite=Strict";
+          localStorage.removeItem("admin_user");
+          router.push("/admin/login");
+        }
+      });
   }, []);
 
   // Handle logout
@@ -157,7 +177,7 @@ export default function AdminLayout({ children }) {
       <aside
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-white border-r border-gray-100 flex flex-col transition-all duration-300 fixed h-full z-40`}
+        } bg-white border-r border-gray-100 flex flex-col transition-all duration-300 fixed h-screen z-40 `}
       >
         {/* Logo */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
@@ -192,7 +212,7 @@ export default function AdminLayout({ children }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -213,22 +233,44 @@ export default function AdminLayout({ children }) {
         </nav>
 
         {/* Admin info + Logout */}
-        <div className="p-3 border-t border-gray-100">
-          {sidebarOpen && (
-            <div className="px-3 py-2 mb-2">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {admin.fullName}
-              </p>
-              <p className="text-xs text-gray-400 truncate">{admin.email}</p>
+        <div className="border-t border-gray-100 p-3 space-y-2">
+          {/* Admin Info */}
+          {sidebarOpen ? (
+            <div className="bg-gray-50 rounded-xl px-3 py-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-green-700 text-sm font-bold">
+                    {admin.fullName?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {admin.fullName}
+                  </p>
+                  <p className="text-xs text-gray-400 truncate">
+                    {admin.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                <span className="text-green-700 text-sm font-bold">
+                  {admin.fullName?.charAt(0).toUpperCase()}
+                </span>
+              </div>
             </div>
           )}
+
+          {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors w-full"
+            className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
+              className="h-5 w-5 flex-shrink-0"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
