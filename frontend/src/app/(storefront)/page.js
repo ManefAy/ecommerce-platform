@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import api from "@/lib/axios";
 import useCartStore from "@/store/cartStore";
+import { useRouter } from "next/navigation";
 
 /**
  * BioTouch Homepage
@@ -18,6 +19,7 @@ export default function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const addItem = useCartStore((state) => state.addItem);
+  const router = useRouter();
 
   /**
    * Fetch all active products from Spring Boot API
@@ -54,7 +56,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-
       {/* ── HERO SECTION ── */}
       <section className="bg-gradient-to-r from-green-50 to-emerald-50 py-20">
         <div className="max-w-6xl mx-auto px-4 flex flex-col items-center text-center">
@@ -62,13 +63,36 @@ export default function Home() {
             100% Natural Products
           </span>
           <h1 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-            Pure Nature,{" "}
-            <span className="text-green-600">Beautiful You</span>
+            Pure Nature, <span className="text-green-600">Beautiful You</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl">
             Découvrez notre gamme de produits naturels pour cheveux et beauté.
             Formulés avec les meilleurs ingrédients de la nature.
           </p>
+          {/* Search Bar */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const keyword = e.target.keyword.value.trim();
+              if (keyword)
+                router.push(`/search?keyword=${encodeURIComponent(keyword)}`);
+            }}
+            className="flex items-center w-full max-w-md bg-white rounded-full shadow-sm overflow-hidden mb-6"
+          >
+            <input
+              type="text"
+              name="keyword"
+              placeholder="Search natural products..."
+              className="flex-1 px-6 py-3 focus:outline-none text-gray-700"
+            />
+            <button
+              type="submit"
+              className="bg-green-600 text-white px-6 py-3 hover:bg-green-700 transition-colors font-medium"
+            >
+              Search
+            </button>
+          </form>
+
           <div className="flex gap-4">
             <Link
               href="/category/hair-care"
@@ -124,10 +148,7 @@ export default function Home() {
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl p-4 animate-pulse"
-              >
+              <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
                 <div className="bg-gray-200 h-48 rounded-xl mb-4" />
                 <div className="bg-gray-200 h-4 rounded mb-2" />
                 <div className="bg-gray-200 h-4 rounded w-2/3" />
