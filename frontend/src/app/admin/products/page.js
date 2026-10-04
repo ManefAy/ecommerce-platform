@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
+import Image from "next/image";
 
 /**
  * Admin Products Management Page
@@ -24,6 +25,10 @@ export default function AdminProductsPage() {
   const [editingProduct, setEditingProduct] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [productImages, setProductImages] = useState([]);
+  const [showImageManager, setShowImageManager] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -202,6 +207,66 @@ export default function AdminProductsPage() {
     }
   };
 
+  // Open image manager for a product
+  const handleManageImages = async (product) => {
+    setSelectedProductId(product.id);
+    setShowImageManager(true);
+    try {
+      const response = await api.get(`/images/products/${product.id}`, {
+        headers: getAuthHeader(),
+      });
+      setProductImages(response.data);
+    } catch (error) {
+      console.error("Failed to fetch images:", error);
+    }
+  };
+
+  // Upload image for a product
+  const handleImageUpload = async (e, productId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("displayOrder", productImages.length + 1);
+
+      const response = await api.post(
+        `/images/products/${productId}`,
+        formData,
+        {
+          headers: {
+            ...getAuthHeader(),
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      setProductImages([...productImages, response.data]);
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to upload image:", error);
+      alert("Failed to upload image. Please try again.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Delete image
+  const handleDeleteImage = async (imageId) => {
+    if (!confirm("Delete this image?")) return;
+    try {
+      await api.delete(`/images/${imageId}`, {
+        headers: getAuthHeader(),
+      });
+      setProductImages(productImages.filter((img) => img.id !== imageId));
+      await fetchData();
+    } catch (error) {
+      console.error("Failed to delete image:", error);
+    }
+  };
+
   // Flatten categories for select dropdown
   const getAllCategories = () => {
     const flat = [];
@@ -316,6 +381,12 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleManageImages(product)}
+                        className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+                      >
+                        Images
+                      </button>
                       <button
                         onClick={() => handleEdit(product)}
                         className="text-blue-600 hover:text-blue-700 text-sm font-medium"
@@ -539,6 +610,86 @@ export default function AdminProductsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Image Manager Modal */}
+      {showImageManager && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-gray-900">Manage Images</h2>
+              <button
+                onClick={() => setShowImageManager(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Current Images */}
+            <div className="grid grid-cols-3 gap-3 mb-6">
+              {productImages.map((image) => (
+                <div key={image.id} className="relative group">
+                  <Image
+                    src={image.imageUrl}
+                    alt="Product"
+                    width={150}
+                    height={96}
+                    style={{ width: "100%", height: "auto" }}
+                    className="object-cover rounded-xl"
+                    loading="eager"
+                  />
+                  <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      onClick={() => handleDeleteImage(image.id)}
+                      className="text-white text-xs font-medium bg-red-500 px-2 py-1 rounded-lg"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  <span className="absolute top-1 left-1 bg-white text-xs font-bold text-gray-700 px-1.5 py-0.5 rounded-full">
+                    {image.displayOrder}
+                  </span>
+                </div>
+              ))}
+
+              {/* Empty state */}
+              {productImages.length === 0 && (
+                <div className="col-span-3 text-center py-8 text-gray-400">
+                  <div className="text-4xl mb-2">🖼️</div>
+                  <p className="text-sm">No images yet</p>
+                </div>
+              )}
+            </div>
+
+            {/* Upload New Image */}
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center">
+              <input
+                type="file"
+                id="imageUpload"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleImageUpload(e, selectedProductId)}
+              />
+              <label htmlFor="imageUpload" className="cursor-pointer">
+                {uploadingImage ? (
+                  <div className="text-gray-500">
+                    <div className="text-2xl mb-2">⏳</div>
+                    <p className="text-sm font-medium">Uploading...</p>
+                  </div>
+                ) : (
+                  <div className="text-gray-500 hover:text-green-600 transition-colors">
+                    <div className="text-3xl mb-2">📷</div>
+                    <p className="text-sm font-medium">Click to upload image</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      JPG, PNG, WebP — Max 5MB
+                    </p>
+                  </div>
+                )}
+              </label>
+            </div>
           </div>
         </div>
       )}
