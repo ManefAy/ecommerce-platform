@@ -115,6 +115,7 @@ public class SecurityConfig {
                  * If a ROLE_USER tries to access these
                  * Spring Security returns 403 Forbidden
                  */
+             	.requestMatchers("/api/images/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
 
                 /**
