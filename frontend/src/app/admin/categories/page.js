@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
+import toast from "react-hot-toast";
 
 /**
  * Admin Categories Management Page
@@ -141,7 +142,7 @@ export default function AdminCategoriesPage() {
       await fetchCategories();
     } catch (error) {
       console.error("Failed to delete category:", error);
-      alert("Cannot delete category. It may have products assigned to it.");
+      toast.error("Cannot delete category. It may have products assigned to it.");
     }
   };
 

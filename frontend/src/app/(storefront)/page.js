@@ -6,6 +6,7 @@ import Image from "next/image";
 import api from "@/lib/axios";
 import useCartStore from "@/store/cartStore";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 /**
  * BioTouch Homepage
@@ -51,7 +52,7 @@ export default function Home() {
       imageUrl: product.images?.[0]?.imageUrl || null,
       slug: product.slug,
     });
-    alert(`${product.title} added to cart!`);
+    toast.success(`${product.title} added to cart!`);
   };
 
   return (

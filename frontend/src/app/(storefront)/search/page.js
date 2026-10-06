@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import api from "@/lib/axios";
 import useCartStore from "@/store/cartStore";
+import toast from "react-hot-toast";
 
 /**
  * Search Results Page
@@ -49,7 +50,7 @@ export default function SearchPage() {
       imageUrl: product.images?.[0]?.imageUrl || null,
       slug: product.slug,
     });
-    alert(`${product.title} added to cart!`);
+    toast.success(`${product.title} added to cart!`);
   };
 
   return (

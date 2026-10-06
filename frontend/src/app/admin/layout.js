@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Toaster } from "react-hot-toast";
 
 /**
  * Admin Dashboard Layout
@@ -311,6 +312,30 @@ export default function AdminLayout({ children }) {
         {/* Page Content */}
         <div className="p-6">{children}</div>
       </main>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            borderRadius: "12px",
+            background: "#fff",
+            color: "#111",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          },
+          success: {
+            iconTheme: {
+              primary: "#16a34a",
+              secondary: "#fff",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "#ef4444",
+              secondary: "#fff",
+            },
+          },
+        }}
+      />
     </div>
   );
 }

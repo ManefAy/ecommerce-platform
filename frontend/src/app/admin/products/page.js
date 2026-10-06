@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import Image from "next/image";
+import toast from "react-hot-toast";
 
 /**
  * Admin Products Management Page
@@ -139,6 +140,10 @@ export default function AdminProductsPage() {
     setSaving(true);
     setError(null);
 
+    const loadingToast = toast.loading(
+      editingProduct ? "Saving changes..." : "Adding product...",
+    );
+
     try {
       const payload = {
         title: form.title,
@@ -166,9 +171,21 @@ export default function AdminProductsPage() {
         });
       }
 
+      toast.dismiss(loadingToast);
+      toast.success(
+        editingProduct
+          ? "Product updated successfully!"
+          : "Product added successfully!",
+      );
+
       await fetchData();
       setShowForm(false);
     } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error(
+        err.response?.data?.message ||
+          "Failed to save product. Please try again.",
+      );
       setError(
         err.response?.data?.message ||
           "Failed to save product. Please try again.",
@@ -227,6 +244,8 @@ export default function AdminProductsPage() {
     if (!file) return;
 
     setUploadingImage(true);
+    const loadingToast = toast.loading("Uploading image...");
+
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -243,11 +262,14 @@ export default function AdminProductsPage() {
         },
       );
 
+      toast.dismiss(loadingToast);
+      toast.success("Image uploaded successfully!");
       setProductImages([...productImages, response.data]);
       await fetchData();
     } catch (error) {
+      toast.dismiss(loadingToast);
+      toast.error("Failed to upload image. Please try again.");
       console.error("Failed to upload image:", error);
-      alert("Failed to upload image. Please try again.");
     } finally {
       setUploadingImage(false);
     }

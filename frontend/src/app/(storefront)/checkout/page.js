@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useCartStore from "@/store/cartStore";
 import api from "@/lib/axios";
+import toast from "react-hot-toast";
 
 /**
  * Checkout Page
@@ -59,6 +60,8 @@ export default function CheckoutPage() {
     setLoading(true);
     setError(null);
 
+    const loadingToast = toast.loading("Placing your order...");
+
     try {
       /**
        * Build the order request matching our
@@ -80,12 +83,20 @@ export default function CheckoutPage() {
       const response = await api.post("/orders", orderRequest);
       const order = response.data;
 
+      toast.dismiss(loadingToast);
+      toast.success("Order placed successfully!", { duration: 4000 });
+
       // Clear the cart after successful order
       clearCart();
 
       // Redirect to confirmation page
       router.push(`/order-confirmed/${order.orderNumber}`);
     } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error(
+        err.response?.data?.message ||
+          "Something went wrong. Please try again.",
+      );
       setError(
         err.response?.data?.message ||
           "Something went wrong. Please try again.",

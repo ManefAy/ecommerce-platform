@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
+import toast from "react-hot-toast";
 
 /**
  * Admin Orders Management Page
@@ -122,7 +123,7 @@ export default function AdminOrdersPage() {
       await fetchAndUpdateSelected(orderId);
     } catch (error) {
       console.error("Failed to cancel order:", error);
-      alert(
+      toast.error(
         "Cannot cancel this order. Only PROCESSING orders can be canceled.",
       );
     } finally {
