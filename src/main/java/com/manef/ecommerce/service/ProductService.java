@@ -1,5 +1,7 @@
 package com.manef.ecommerce.service;
 
+import com.manef.ecommerce.exception.BusinessException;
+import com.manef.ecommerce.exception.ResourceNotFoundException;
 import com.manef.ecommerce.dto.request.ProductRequest;
 import com.manef.ecommerce.dto.response.ProductResponse;
 import com.manef.ecommerce.entity.Category;
@@ -84,7 +86,7 @@ public class ProductService {
     public ProductResponse getProductBySlug(String slug) {
         Product product = productRepository.findBySlug(slug)
                 .orElseThrow(() ->
-                        new RuntimeException("Product not found with slug: " + slug)
+                        new ResourceNotFoundException("Product not found with slug: " + slug)
                 );
         return mapToResponse(product);
     }
@@ -97,7 +99,7 @@ public class ProductService {
     public ProductResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Product not found with id: " + id)
+                        new ResourceNotFoundException("Product not found with id: " + id)
                 );
         return mapToResponse(product);
     }
@@ -130,7 +132,7 @@ public class ProductService {
 
         // Check slug is not already taken
         if (productRepository.existsBySlug(request.getSlug())) {
-            throw new RuntimeException(
+            throw new BusinessException(
                 "Slug already exists: " + request.getSlug()
             );
         }
@@ -138,7 +140,7 @@ public class ProductService {
         // Load the category
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                             "Category not found with id: " + request.getCategoryId()
                         )
                 );
@@ -188,13 +190,13 @@ public class ProductService {
         // Find the existing product
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Product not found with id: " + id)
+                        new ResourceNotFoundException("Product not found with id: " + id)
                 );
 
         // Check slug uniqueness only if it changed
         if (!product.getSlug().equals(request.getSlug()) &&
              productRepository.existsBySlug(request.getSlug())) {
-            throw new RuntimeException(
+            throw new BusinessException(
                 "Slug already exists: " + request.getSlug()
             );
         }
@@ -202,7 +204,7 @@ public class ProductService {
         // Load the new category if it changed
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                             "Category not found with id: " + request.getCategoryId()
                         )
                 );
@@ -253,7 +255,7 @@ public class ProductService {
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Product not found with id: " + id)
+                        new ResourceNotFoundException("Product not found with id: " + id)
                 );
         productRepository.delete(product);
     }
@@ -268,7 +270,7 @@ public class ProductService {
     public ProductResponse toggleProductStatus(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Product not found with id: " + id)
+                        new ResourceNotFoundException("Product not found with id: " + id)
                 );
 
         // Flip the active status

@@ -10,10 +10,10 @@ import axios from "axios";
  * api.get("/products")
  */
 const api = axios.create({
-    baseURL: "http://localhost:8080/api",
-    headers: {
+  baseURL: "http://localhost:8080/api",
+  headers: {
     "Content-Type": "application/json",
-    },
+  },
 });
 
 /**
@@ -26,7 +26,7 @@ const api = axios.create({
  * to each API call — it happens automatically here.
  */
 api.interceptors.request.use(
-    (config) => {
+  (config) => {
     /**
      * Read the token from localStorage.
      * We store it there after login.
@@ -36,43 +36,56 @@ api.interceptors.request.use(
     const token = localStorage.getItem("token");
 
     if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
 
     return config;
-    },
-    (error) => {
+  },
+  (error) => {
     return Promise.reject(error);
-    },
+  },
 );
 
 /**
  * RESPONSE INTERCEPTOR
  * Runs after every response is received.
  *
- * Handles global errors:
- * → 401 Unauthorized → token expired → redirect to login
- * → 403 Forbidden → not enough permissions
+ * 401 Unauthorized:
+ * → On a login/register request (/auth/...) it just means
+ *   "wrong email or password" → let the page show the error,
+ *   do NOT redirect.
+ * → On an admin page it means the admin token expired →
+ *   clear the admin session and go to /admin/login.
+ * → Anywhere else (storefront) → clear the customer token.
+ *   No redirect: there is no customer /login page yet.
  */
 api.interceptors.response.use(
-    (response) => {
+  (response) => {
     // Successful response → just return it
     return response;
-    },
-    (error) => {
-    if (error.response?.status === 401) {
-        /**
-       * Token expired or invalid.
-       * Clear the stored token and redirect to login.
-       * This handles session expiry automatically.
-       */
+  },
+  (error) => {
+    const isAuthRequest = error.config?.url?.startsWith("/auth/");
+
+    if (error.response?.status === 401 && !isAuthRequest) {
+      const onAdminPage = window.location.pathname.startsWith("/admin");
+
+      if (onAdminPage) {
+        // Admin token expired or invalid → back to admin login
+        document.cookie = "admin_token=; path=/; max-age=0; SameSite=Strict";
+        localStorage.removeItem("admin_user");
+        if (window.location.pathname !== "/admin/login") {
+          window.location.replace("/admin/login");
+        }
+      } else {
+        // Storefront → just forget the stale customer token
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        window.location.replace("/login");
+      }
     }
 
     return Promise.reject(error);
-    },
+  },
 );
 
 export default api;

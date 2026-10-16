@@ -1,5 +1,7 @@
 package com.manef.ecommerce.service;
 
+import com.manef.ecommerce.exception.BusinessException;
+import com.manef.ecommerce.exception.ResourceNotFoundException;
 import com.manef.ecommerce.dto.request.CategoryRequest;
 import com.manef.ecommerce.dto.response.CategoryResponse;
 import com.manef.ecommerce.entity.Category;
@@ -60,7 +62,7 @@ public class CategoryService {
     public CategoryResponse getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Category not found with id: " + id)
+                        new ResourceNotFoundException("Category not found with id: " + id)
                 );
         return mapToResponse(category);
     }
@@ -73,7 +75,7 @@ public class CategoryService {
     public CategoryResponse getCategoryBySlug(String slug) {
         Category category = categoryRepository.findBySlug(slug)
                 .orElseThrow(() ->
-                        new RuntimeException("Category not found with slug: " + slug)
+                        new ResourceNotFoundException("Category not found with slug: " + slug)
                 );
         return mapToResponse(category);
     }
@@ -94,7 +96,7 @@ public class CategoryService {
 
         // Check slug is not already taken
         if (categoryRepository.existsBySlug(request.getSlug())) {
-            throw new RuntimeException(
+            throw new BusinessException(
                 "Slug already exists: " + request.getSlug()
             );
         }
@@ -114,7 +116,7 @@ public class CategoryService {
             Category parent = categoryRepository
                     .findById(request.getParentId())
                     .orElseThrow(() ->
-                            new RuntimeException(
+                            new ResourceNotFoundException(
                                 "Parent category not found with id: "
                                 + request.getParentId()
                             )
@@ -144,7 +146,7 @@ public class CategoryService {
         // Find the existing category
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Category not found with id: " + id)
+                        new ResourceNotFoundException("Category not found with id: " + id)
                 );
 
         /**
@@ -153,7 +155,7 @@ public class CategoryService {
          */
         if (!category.getSlug().equals(request.getSlug()) &&
              categoryRepository.existsBySlug(request.getSlug())) {
-            throw new RuntimeException(
+            throw new BusinessException(
                 "Slug already exists: " + request.getSlug()
             );
         }
@@ -168,7 +170,7 @@ public class CategoryService {
             Category parent = categoryRepository
                     .findById(request.getParentId())
                     .orElseThrow(() ->
-                            new RuntimeException(
+                            new ResourceNotFoundException(
                                 "Parent category not found with id: "
                                 + request.getParentId()
                             )
@@ -199,7 +201,7 @@ public class CategoryService {
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Category not found with id: " + id)
+                        new ResourceNotFoundException("Category not found with id: " + id)
                 );
         categoryRepository.delete(category);
     }

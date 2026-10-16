@@ -1,7 +1,9 @@
 package com.manef.ecommerce.repository;
 
 import com.manef.ecommerce.entity.Order;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
@@ -19,6 +21,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      * SELECT * FROM orders WHERE order_number = ?
      */
     Optional<Order> findByOrderNumber(String orderNumber);
+
+    /**
+     * Loads an order and locks its row until the transaction ends.
+     * Prevents two admins from canceling the same order at the
+     * same time (which would restore stock twice).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findByIdForUpdate(@Param("id") Long id);
 
     /**
      * Get all orders placed by a specific registered user.

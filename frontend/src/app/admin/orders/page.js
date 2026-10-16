@@ -76,7 +76,6 @@ export default function AdminOrdersPage() {
     if (updated) setSelectedOrder(updated);
   };
 
-  // Update order status
   const handleUpdateStatus = async (orderId, newStatus) => {
     setUpdating(true);
     try {
@@ -88,6 +87,7 @@ export default function AdminOrdersPage() {
       await fetchAndUpdateSelected(orderId);
     } catch (error) {
       console.error("Failed to update status:", error);
+      toast.error(error.response?.data?.message || "Failed to update status.");
     } finally {
       setUpdating(false);
     }
@@ -105,6 +105,7 @@ export default function AdminOrdersPage() {
       await fetchAndUpdateSelected(orderId);
     } catch (error) {
       console.error("Failed to update payment:", error);
+      toast.error(error.response?.data?.message || "Failed to update payment.");
     } finally {
       setUpdating(false);
     }
@@ -124,7 +125,8 @@ export default function AdminOrdersPage() {
     } catch (error) {
       console.error("Failed to cancel order:", error);
       toast.error(
-        "Cannot cancel this order. Only PROCESSING orders can be canceled.",
+        error.response?.data?.message ||
+          "Cannot cancel this order. Only PROCESSING orders can be canceled.",
       );
     } finally {
       setUpdating(false);
