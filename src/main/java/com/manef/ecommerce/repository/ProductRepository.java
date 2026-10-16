@@ -1,7 +1,9 @@
 package com.manef.ecommerce.repository;
 
 import com.manef.ecommerce.entity.Product;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
@@ -81,4 +83,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "AND (p.category.id = :categoryId " +
            "OR p.category.parent.id = :categoryId)")
     List<Product> findByCategoryOrSubCategory(@Param("categoryId") Long categoryId);
+
+    /**
+     * Loads a product and locks its row until the transaction ends
+     * (SELECT ... FOR UPDATE). Two checkouts for the same product
+     * now run one after the other, so stock can't be oversold.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Product p WHERE p.id = :id")
+    Optional<Product> findByIdForUpdate(@Param("id") Long id);
 }

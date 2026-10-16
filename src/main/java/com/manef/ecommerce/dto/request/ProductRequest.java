@@ -3,6 +3,7 @@ package com.manef.ecommerce.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -52,11 +53,11 @@ public class ProductRequest {
 
     /**
      * Stock quantity available
-     * @NotNull  → must be provided
-     * @Positive → must be greater than 0
+     * @NotNull        → must be provided
+     * @PositiveOrZero → 0 is allowed (product sold out)
      */
     @NotNull(message = "Stock quantity is required")
-    @Positive(message = "Stock quantity must be greater than 0")
+    @PositiveOrZero(message = "Stock quantity cannot be negative")
     private Integer stockQuantity;
 
     /**

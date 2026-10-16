@@ -5,6 +5,8 @@ import com.manef.ecommerce.dto.response.DeliveryResponse;
 import com.manef.ecommerce.dto.request.OrderRequest;
 import com.manef.ecommerce.dto.response.OrderResponse;
 import com.manef.ecommerce.entity.*;
+import com.manef.ecommerce.exception.BusinessException;
+import com.manef.ecommerce.exception.ResourceNotFoundException;
 import com.manef.ecommerce.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,7 +16,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -88,13 +93,13 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         BigDecimal totalAmount = BigDecimal.ZERO;
 
-        for (OrderRequest.OrderItemRequest itemRequest : request.getItems()) {
+        for (OrderRequest.OrderItemRequest itemRequest : mergeItems(request.getItems())) {
 
-            // Load product from DB
+            // Load product from DB and lock its row until the order is saved
             Product product = productRepository
-                    .findById(itemRequest.getProductId())
+                    .findByIdForUpdate(itemRequest.getProductId())
                     .orElseThrow(() ->
-                            new RuntimeException(
+                            new ResourceNotFoundException(
                                 "Product not found with id: "
                                 + itemRequest.getProductId()
                             )
@@ -102,14 +107,14 @@ public class OrderService {
 
             // Check product is active
             if (!product.getActive()) {
-                throw new RuntimeException(
+                throw new BusinessException(
                     "Product is no longer available: " + product.getTitle()
                 );
             }
 
             // Check enough stock is available
             if (product.getStockQuantity() < itemRequest.getQuantity()) {
-                throw new RuntimeException(
+                throw new BusinessException(
                     "Insufficient stock for: " + product.getTitle()
                     + ". Available: " + product.getStockQuantity()
                     + ", Requested: " + itemRequest.getQuantity()
@@ -285,7 +290,7 @@ public class OrderService {
     public OrderResponse getOrderByOrderNumber(String orderNumber) {
         Order order = orderRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new ResourceNotFoundException(
                             "Order not found: " + orderNumber
                         )
                 );
@@ -301,7 +306,7 @@ public class OrderService {
     public List<OrderResponse> getMyOrders(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found: " + userEmail)
+                        new ResourceNotFoundException("User not found: " + userEmail)
                 );
 
         return orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
@@ -360,10 +365,23 @@ public class OrderService {
             Long orderId,
             Order.OrderStatus newStatus) {
 
-        Order order = orderRepository.findById(orderId)
+        // Canceling must restore stock → always go through cancelOrder()
+        if (newStatus == Order.OrderStatus.CANCELED) {
+            return cancelOrder(orderId);
+        }
+
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() ->
-                        new RuntimeException("Order not found with id: " + orderId)
+                        new ResourceNotFoundException("Order not found with id: " + orderId)
                 );
+
+        // Only allow the documented flow: PROCESSING → SHIPPED → DELIVERED
+        if (!order.getOrderStatus().canTransitionTo(newStatus)) {
+            throw new BusinessException(
+                "Cannot change order status from " + order.getOrderStatus()
+                + " to " + newStatus
+            );
+        }
 
         order.setOrderStatus(newStatus);
         Order updated = orderRepository.save(order);
@@ -382,7 +400,7 @@ public class OrderService {
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() ->
-                        new RuntimeException("Order not found with id: " + orderId)
+                        new ResourceNotFoundException("Order not found with id: " + orderId)
                 );
 
         order.setPaymentStatus(newStatus);
@@ -398,24 +416,33 @@ public class OrderService {
     @Transactional
     public OrderResponse cancelOrder(Long orderId) {
 
-        Order order = orderRepository.findById(orderId)
+        // Lock the order row so two cancel requests can't both restore stock
+        Order order = orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() ->
-                        new RuntimeException("Order not found with id: " + orderId)
+                        new ResourceNotFoundException("Order not found with id: " + orderId)
                 );
 
         // Can only cancel PROCESSING orders
-        if (order.getOrderStatus() != Order.OrderStatus.PROCESSING) {
-            throw new RuntimeException(
+        if (!order.getOrderStatus().canTransitionTo(Order.OrderStatus.CANCELED)) {
+            throw new BusinessException(
                 "Cannot cancel order with status: " + order.getOrderStatus()
                 + ". Only PROCESSING orders can be canceled."
             );
         }
 
-        // Restore stock for each item
+        // Restore stock for each item (products locked in id order to avoid deadlocks)
         List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+        List<OrderItem> itemsByProduct = new ArrayList<>(items);
+        itemsByProduct.sort(Comparator.comparing(item -> item.getProduct().getId()));
 
-        for (OrderItem item : items) {
-            Product product = item.getProduct();
+        for (OrderItem item : itemsByProduct) {
+            Product product = productRepository
+                    .findByIdForUpdate(item.getProduct().getId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException(
+                                "Product not found with id: " + item.getProduct().getId()
+                            )
+                    );
 
             int quantityBefore = product.getStockQuantity();
             int quantityAfter = quantityBefore + item.getQuantity();
@@ -446,6 +473,29 @@ public class OrderService {
     // ─────────────────────────────────────────────────────
     // HELPERS
     // ─────────────────────────────────────────────────────
+
+    /**
+     * Combines lines for the same product into one line
+     * (e.g. product 5 × 3 and product 5 × 3 → product 5 × 6),
+     * so the stock check sees the real total quantity.
+     * TreeMap keeps products sorted by id → rows are always
+     * locked in the same order, which avoids deadlocks.
+     */
+    private List<OrderRequest.OrderItemRequest> mergeItems(
+            List<OrderRequest.OrderItemRequest> items) {
+        Map<Long, Integer> quantities = new TreeMap<>();
+        for (OrderRequest.OrderItemRequest item : items) {
+            quantities.merge(item.getProductId(), item.getQuantity(), Integer::sum);
+        }
+        List<OrderRequest.OrderItemRequest> merged = new ArrayList<>();
+        quantities.forEach((productId, quantity) -> {
+            OrderRequest.OrderItemRequest line = new OrderRequest.OrderItemRequest();
+            line.setProductId(productId);
+            line.setQuantity(quantity);
+            merged.add(line);
+        });
+        return merged;
+    }
 
     /**
      * Generate a unique order number.

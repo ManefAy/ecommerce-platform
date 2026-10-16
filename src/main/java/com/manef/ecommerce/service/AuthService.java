@@ -1,5 +1,7 @@
 package com.manef.ecommerce.service;
 
+import com.manef.ecommerce.exception.BusinessException;
+import com.manef.ecommerce.exception.ResourceNotFoundException;
 import com.manef.ecommerce.dto.request.LoginRequest;
 import com.manef.ecommerce.dto.request.RegisterRequest;
 import com.manef.ecommerce.dto.response.AuthResponse;
@@ -52,7 +54,7 @@ public class AuthService {
 
         // ── Step 1: Check if email already exists ──────
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException(
+            throw new BusinessException(
                 "Email already registered: " + request.getEmail()
             );
         }
@@ -108,7 +110,7 @@ public class AuthService {
      * Flow:
      * 1. AuthenticationManager verifies email + password
      *    → If wrong credentials → throws exception automatically
-     *    → Spring Security handles the 401 response
+     *    → GlobalExceptionHandler returns 401 Unauthorized
      * 2. Load the user from MySQL
      * 3. Generate a JWT token
      * 4. Return the token + user info
@@ -129,7 +131,7 @@ public class AuthService {
          * then compares the BCrypt hashed passwords.
          *
          * If credentials are wrong → BadCredentialsException is thrown
-         * automatically → Spring Security returns 401 Unauthorized
+         * → GlobalExceptionHandler returns 401 Unauthorized
          */
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -149,7 +151,7 @@ public class AuthService {
          */
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() ->
-                        new RuntimeException("User not found")
+                        new ResourceNotFoundException("User not found")
                 );
 
         // ── Step 3: Generate JWT token ─────────────────

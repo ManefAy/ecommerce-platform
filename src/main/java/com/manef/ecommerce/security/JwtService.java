@@ -28,7 +28,6 @@ public class JwtService {
 
     /**
      * @Value → reads the value from application.properties
-     * jwt.secret=404E635266556A58...
      * This is the secret key used to sign and verify tokens
      * NEVER hardcode this — always read from properties
      */

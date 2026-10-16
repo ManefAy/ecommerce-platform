@@ -219,6 +219,20 @@ public class Order {
         PROCESSING,
         SHIPPED,
         DELIVERED,
-        CANCELED
+        CANCELED;
+
+        /**
+         * Allowed lifecycle (from the project documentation):
+         * PROCESSING → SHIPPED → DELIVERED
+         * PROCESSING → CANCELED (only via cancel, which restores stock)
+         * DELIVERED and CANCELED are final.
+         */
+        public boolean canTransitionTo(OrderStatus next) {
+            return switch (this) {
+                case PROCESSING -> next == SHIPPED || next == CANCELED;
+                case SHIPPED -> next == DELIVERED;
+                case DELIVERED, CANCELED -> false;
+            };
+        }
     }
 }

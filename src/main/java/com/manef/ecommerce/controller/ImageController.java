@@ -1,5 +1,8 @@
 package com.manef.ecommerce.controller;
 
+import com.manef.ecommerce.exception.BusinessException;
+import com.manef.ecommerce.exception.ResourceNotFoundException;
+import org.springframework.http.HttpStatus;
 import com.manef.ecommerce.entity.Product;
 import com.manef.ecommerce.entity.ProductImage;
 import com.manef.ecommerce.repository.ProductImageRepository;
@@ -57,18 +60,18 @@ public class ImageController {
         // Verify product exists
         Product product = productRepository.findById(productId)
                 .orElseThrow(() ->
-                        new RuntimeException("Product not found: " + productId)
+                        new ResourceNotFoundException("Product not found: " + productId)
                 );
 
         // Validate file
         if (file.isEmpty()) {
-            throw new RuntimeException("Please select a file to upload");
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Please select a file to upload");
         }
 
         // Validate file type
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new RuntimeException("Only image files are allowed");
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Only image files are allowed");
         }
 
         // Upload to Cloudinary
@@ -113,7 +116,7 @@ public class ImageController {
 
         ProductImage image = productImageRepository.findById(imageId)
                 .orElseThrow(() ->
-                        new RuntimeException("Image not found: " + imageId)
+                        new ResourceNotFoundException("Image not found: " + imageId)
                 );
 
         // Delete from Cloudinary
