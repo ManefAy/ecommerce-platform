@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -47,7 +48,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
-
+	
+    // Used to build the random part of order numbers
+    private static final String ORDER_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+    private static final SecureRandom RANDOM = new SecureRandom();
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductRepository productRepository;
@@ -285,10 +289,21 @@ public class OrderService {
      * Get an order by its order number.
      * Used on the order tracking page.
      * Public — guest customers can track their order.
+     *
+     * The customer must also give the phone number used
+     * at checkout. Without it, anyone guessing an order
+     * number could read the customer's name, phone and address.
+     * A wrong phone returns the same "not found" error as a
+     * wrong order number, so it doesn't reveal which orders exist.
      */
     @Transactional
-    public OrderResponse getOrderByOrderNumber(String orderNumber) {
+    public OrderResponse getOrderByOrderNumber(String orderNumber, String phone) {
+        if (phone == null || phone.isBlank()) {
+            throw new BusinessException("Phone number is required");
+        }
+
         Order order = orderRepository.findByOrderNumber(orderNumber)
+                .filter(o -> samePhone(o.getCustomerPhone(), phone))
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                             "Order not found: " + orderNumber
@@ -296,6 +311,20 @@ public class OrderService {
                 );
         List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
         return mapToResponse(order, items);
+    }
+
+    /**
+     * Compares two phone numbers ignoring spaces, dashes
+     * and the +216 / 00216 country code.
+     * e.g. "+216 12 345 678" and "12345678" match.
+     */
+    private boolean samePhone(String stored, String given) {
+        String a = stored == null ? "" : stored.replaceAll("\\D", "");
+        String b = given.replaceAll("\\D", "");
+        if (a.isEmpty() || b.isEmpty()) return false;
+        String lastA = a.length() > 8 ? a.substring(a.length() - 8) : a;
+        String lastB = b.length() > 8 ? b.substring(b.length() - 8) : b;
+        return lastA.equals(lastB);
     }
 
     /**
@@ -499,28 +528,30 @@ public class OrderService {
 
     /**
      * Generate a unique order number.
-     * Format: ORD-YYYYMMDD-XXXX
-     * e.g. ORD-20240101-1234
+     * Format: ORD-YYYYMMDD-XXXXXX
+     * e.g. ORD-20261018-K7P2QX
      *
-     * We use the current timestamp in milliseconds
-     * at the end to ensure uniqueness.
+     * The last part is 6 random characters, so order numbers
+     * can't be guessed by counting up (the old format used
+     * the order count: -0001, -0002, ...).
+     * The alphabet skips 0/O and 1/I/L so customers can't
+     * misread their number. 31^6 ≈ 887 million codes per day.
      */
     private String generateOrderNumber() {
         String datePart = LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        /**
-         * Count all existing orders in DB and add 1.
-         * This guarantees a unique sequential number.
-         * e.g. 0 orders → "0001", 1 order → "0002"
-         *
-         * String.format("%04d") → formats with leading zeros
-         * e.g. 1 → "0001", 23 → "0023", 100 → "0100"
-         */
-        long orderCount = orderRepository.count() + 1;
-        String sequentialPart = String.format("%04d", orderCount);
+        String orderNumber;
+        do {
+            StringBuilder code = new StringBuilder();
+            for (int i = 0; i < 6; i++) {
+                code.append(ORDER_CODE_ALPHABET.charAt(
+                        RANDOM.nextInt(ORDER_CODE_ALPHABET.length())));
+            }
+            orderNumber = "ORD-" + datePart + "-" + code;
+        } while (orderRepository.existsByOrderNumber(orderNumber));
 
-        return "ORD-" + datePart + "-" + sequentialPart;
+        return orderNumber;
     }
 
     /**

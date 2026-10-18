@@ -74,15 +74,17 @@ public class OrderController {
 
     /**
      * Track an order by order number.
-     * Public — guest customers can track without logging in.
+     * Public — guest customers can track without logging in,
+     * but must give the phone number used at checkout.
      *
-     * GET http://localhost:8080/api/orders/track/ORD-20240101-1234
+     * GET http://localhost:8080/api/orders/track/ORD-20261018-K7P2QX?phone=12345678
      */
     @GetMapping("/track/{orderNumber}")
     public ResponseEntity<OrderResponse> trackOrder(
-            @PathVariable String orderNumber) {
+            @PathVariable String orderNumber,
+            @RequestParam(required = false) String phone) {
         return ResponseEntity.ok(
-                orderService.getOrderByOrderNumber(orderNumber)
+                orderService.getOrderByOrderNumber(orderNumber, phone)
         );
     }
 

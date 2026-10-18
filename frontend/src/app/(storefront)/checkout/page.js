@@ -89,6 +89,15 @@ export default function CheckoutPage() {
       // Clear the cart after successful order
       clearCart();
 
+      /**
+       * Keep the order for the confirmation page.
+       * Tracking an order now needs the customer's phone,
+       * so the confirmation page reads it from here
+       * instead of calling the tracking endpoint.
+       * sessionStorage is cleared when the tab is closed.
+       */
+      sessionStorage.setItem("lastOrder", JSON.stringify(order));
+
       // Redirect to confirmation page
       router.push(`/order-confirmed/${order.orderNumber}`);
     } catch (err) {

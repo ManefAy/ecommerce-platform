@@ -23,6 +23,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByOrderNumber(String orderNumber);
 
     /**
+     * Used when generating a new order number
+     * to make sure the random code is not already taken.
+     */
+    boolean existsByOrderNumber(String orderNumber);
+
+    /**
      * Loads an order and locks its row until the transaction ends.
      * Prevents two admins from canceling the same order at the
      * same time (which would restore stock twice).
