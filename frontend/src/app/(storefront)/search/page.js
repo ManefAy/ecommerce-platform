@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -15,7 +15,7 @@ import toast from "react-hot-toast";
  * Reads the keyword from URL query parameter
  * and fetches matching products from Spring Boot.
  */
-export default function SearchPage() {
+function SearchResults() {
   const searchParams = useSearchParams();
   const keyword = searchParams.get("keyword") || "";
   const [products, setProducts] = useState([]);
@@ -170,5 +170,22 @@ export default function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+/**
+ * useSearchParams() must sit inside a Suspense boundary,
+ * otherwise `next build` fails while prerendering /search.
+ */
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-6xl mx-auto px-4 py-12">
+          <h1 className="text-3xl font-bold text-gray-900">Search Results</h1>
+        </div>
+      }
+    >
+      <SearchResults />
+    </Suspense>
   );
 }

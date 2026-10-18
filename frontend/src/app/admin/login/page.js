@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import api from "@/lib/axios";
@@ -19,7 +19,7 @@ import api from "@/lib/axios";
  * Only ROLE_ADMIN can access the dashboard.
  * ROLE_USER gets an error message.
  */
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -213,5 +213,16 @@ export default function AdminLoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+/**
+ * useSearchParams() must sit inside a Suspense boundary,
+ * otherwise `next build` fails while prerendering /admin/login.
+ */
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <AdminLoginForm />
+    </Suspense>
   );
 }
