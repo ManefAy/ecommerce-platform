@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
@@ -14,7 +14,7 @@ import api from "@/lib/axios";
  * by entering their order number.
  * No login required — public page.
  */
-export default function TrackPage() {
+function TrackOrder() {
   const searchParams = useSearchParams();
 
   // Initialize orderNumber from URL if available
@@ -299,5 +299,23 @@ export default function TrackPage() {
         </div>
       )}
     </div>
+  );
+}
+/**
+ * useSearchParams() must sit inside a Suspense boundary,
+ * otherwise `next build` fails while prerendering /track.
+ */
+export default function TrackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+          <div className="text-5xl mb-4">📦</div>
+          <h1 className="text-3xl font-bold text-gray-900">Track Your Order</h1>
+        </div>
+      }
+    >
+      <TrackOrder />
+    </Suspense>
   );
 }
