@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import api from "@/lib/axios";
 
 /**
  * Order Confirmed / Thank You Page
@@ -21,19 +20,23 @@ export default function OrderConfirmedPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * The order comes from sessionStorage, saved by the
+   * checkout page right after the order was placed.
+   * (The public tracking endpoint needs the customer's
+   * phone number, so we don't call it here.)
+   */
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const response = await api.get(`/orders/track/${orderNumber}`);
-        setOrder(response.data);
-      } catch (error) {
-        console.error("Failed to fetch order:", error);
-      } finally {
-        setLoading(false);
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("lastOrder"));
+      if (saved?.orderNumber === orderNumber) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setOrder(saved);
       }
-    };
-
-    if (orderNumber) fetchOrder();
+    } catch {
+      // Nothing saved or invalid JSON → show the "not found" message
+    }
+    setLoading(false);
   }, [orderNumber]);
 
   // ── LOADING STATE ──
@@ -55,8 +58,15 @@ export default function OrderConfirmedPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-4">
           Order not found
         </h1>
-        <Link href="/" className="text-green-600 hover:text-green-700">
-          ← Back to Home
+        <p className="text-gray-500 mb-6">
+          You can check your order on the tracking page with your order number
+          and phone number.
+        </p>
+        <Link
+          href={`/track?order=${orderNumber}`}
+          className="text-green-600 hover:text-green-700"
+        >
+          Track your order →
         </Link>
       </div>
     );

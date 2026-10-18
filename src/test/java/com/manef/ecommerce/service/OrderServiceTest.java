@@ -3,7 +3,9 @@ package com.manef.ecommerce.service;
 import com.manef.ecommerce.dto.request.OrderRequest;
 import com.manef.ecommerce.dto.response.DeliveryResponse;
 import com.manef.ecommerce.entity.*;
+import com.manef.ecommerce.dto.response.OrderResponse;
 import com.manef.ecommerce.exception.BusinessException;
+import com.manef.ecommerce.exception.ResourceNotFoundException;
 import com.manef.ecommerce.repository.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -175,5 +177,50 @@ class OrderServiceTest {
 
         assertThat(product.getStockQuantity()).isEqualTo(2);
         verify(orderItemRepository, times(1)).save(any(OrderItem.class));
+    }
+
+    // ── order tracking ───────────────────────────────────
+
+    @Test
+    void trackingWithMatchingPhoneReturnsOrder() {
+        when(orderRepository.findByOrderNumber("ORD-TEST-1"))
+                .thenReturn(Optional.of(order(1, Order.OrderStatus.PROCESSING)));
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(List.of());
+
+        // Stored as "+21612345678": spaces and missing country code still match
+        OrderResponse response = orderService.getOrderByOrderNumber("ORD-TEST-1", "12 345 678");
+
+        assertThat(response.getOrderNumber()).isEqualTo("ORD-TEST-1");
+    }
+
+    @Test
+    void trackingWithWrongPhoneLooksLikeUnknownOrder() {
+        when(orderRepository.findByOrderNumber("ORD-TEST-1"))
+                .thenReturn(Optional.of(order(1, Order.OrderStatus.PROCESSING)));
+
+        assertThatThrownBy(() -> orderService.getOrderByOrderNumber("ORD-TEST-1", "99999999"))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void trackingWithoutPhoneIsRejected() {
+        assertThatThrownBy(() -> orderService.getOrderByOrderNumber("ORD-TEST-1", " "))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Phone number is required");
+
+        verify(orderRepository, never()).findByOrderNumber(any());
+    }
+
+    @Test
+    void newOrderNumberHasARandomCode() {
+        when(productRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(product(10, 5)));
+        when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(deliveryApiService.createShipment(any()))
+                .thenReturn(DeliveryResponse.builder().success(false)
+                        .errorMessage("placeholder").shippingFee(BigDecimal.ZERO).build());
+
+        OrderResponse response = orderService.placeOrder(orderRequest(line(10, 1)), null);
+
+        assertThat(response.getOrderNumber()).matches("ORD-\\d{8}-[2-9A-HJKMNP-Z]{6}");
     }
 }

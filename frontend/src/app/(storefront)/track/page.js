@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/axios";
@@ -8,10 +8,11 @@ import api from "@/lib/axios";
 /**
  * Order Tracking Page
  * Route: /track
- * Route: /track?order=ORD-20261001-0001 (pre-filled from confirmation page)
+ * Route: /track?order=ORD-20261018-K7P2QX (pre-filled from confirmation page)
  *
  * Allows customers to track their order
- * by entering their order number.
+ * by entering their order number and the phone
+ * number they used at checkout.
  * No login required — public page.
  */
 function TrackOrder() {
@@ -21,16 +22,19 @@ function TrackOrder() {
   const [orderNumber, setOrderNumber] = useState(
     searchParams.get("order") || "",
   );
+  const [phone, setPhone] = useState("");
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ── HANDLE TRACK — declared before useEffect ──
-  const handleTrack = async (number) => {
-    const trackNumber = number || orderNumber;
-
-    if (!trackNumber.trim()) {
-      setError("Please enter your order number");
+  /**
+   * The phone number is required: it proves the visitor
+   * is the customer, so strangers can't read someone's
+   * name and address by guessing an order number.
+   */
+  const handleTrack = async () => {
+    if (!orderNumber.trim() || !phone.trim()) {
+      setError("Please enter your order number and phone number");
       return;
     }
 
@@ -39,32 +43,21 @@ function TrackOrder() {
     setOrder(null);
 
     try {
-      const response = await api.get(`/orders/track/${trackNumber.trim()}`);
+      const response = await api.get(
+        `/orders/track/${encodeURIComponent(orderNumber.trim())}`,
+        { params: { phone: phone.trim() } },
+      );
       setOrder(response.data);
     } catch (err) {
       setError(
         err.response?.status === 404
-          ? "Order not found. Please check your order number."
+          ? "Order not found. Please check your order number and phone number."
           : "Something went wrong. Please try again.",
       );
     } finally {
       setLoading(false);
     }
   };
-
-  /**
-   * If customer comes from order confirmed page
-   * the order number is already in the URL as ?order=xxx
-   * Auto-search on page load.
-   */
-  useEffect(() => {
-    const orderFromUrl = searchParams.get("order");
-    if (orderFromUrl) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      handleTrack(orderFromUrl);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /**
    * Returns the appropriate color and label
@@ -114,28 +107,38 @@ function TrackOrder() {
           Track Your Order
         </h1>
         <p className="text-gray-500">
-          Enter your order number to track your delivery.
+          Enter your order number and phone number to track your delivery.
         </p>
       </div>
 
       {/* ── SEARCH FORM ── */}
       <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
-        <div className="flex gap-3">
+        <div className="space-y-3">
           <input
             type="text"
             value={orderNumber}
             onChange={(e) => setOrderNumber(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleTrack()}
-            placeholder="e.g. ORD-20261001-0001"
-            className="flex-1 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500 transition-colors"
+            placeholder="Order number, e.g. ORD-20261018-K7P2QX"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500 transition-colors"
           />
-          <button
-            onClick={() => handleTrack()}
-            disabled={loading}
-            className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors disabled:bg-gray-300"
-          >
-            {loading ? "..." : "Track"}
-          </button>
+          <div className="flex gap-3">
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleTrack()}
+              placeholder="Phone number used at checkout"
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-green-500 transition-colors"
+            />
+            <button
+              onClick={() => handleTrack()}
+              disabled={loading}
+              className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors disabled:bg-gray-300"
+            >
+              {loading ? "..." : "Track"}
+            </button>
+          </div>
         </div>
 
         {/* Error message */}
