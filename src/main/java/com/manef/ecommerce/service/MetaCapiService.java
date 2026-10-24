@@ -226,8 +226,8 @@ public class MetaCapiService {
      * in application.properties are still placeholders.
      */
     private boolean isSimulationMode() {
-        return accessToken.equals("your_meta_access_token") ||
-               pixelId.equals("your_pixel_id") ||
+        return accessToken.equalsIgnoreCase("your_meta_access_token") ||
+               pixelId.equalsIgnoreCase("your_pixel_id") ||
                accessToken.isEmpty() ||
                pixelId.isEmpty();
     }
