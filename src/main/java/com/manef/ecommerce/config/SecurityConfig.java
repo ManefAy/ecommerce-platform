@@ -138,6 +138,29 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
+            
+
+            // ─────────────────────────────────────────────
+            // NOT LOGGED IN → clean 401 JSON
+            // ─────────────────────────────────────────────
+            /**
+             * Runs when a protected route is called with no token
+             * or with a bad one. Same JSON shape as
+             * GlobalExceptionHandler, so the frontend can read
+             * err.response.data.message.
+             */
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(401);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write(
+                        "{\"status\":401,\"error\":\"Unauthorized\","
+                        + "\"message\":\"Please log in again\","
+                        + "\"timestamp\":\"" + java.time.LocalDateTime.now() + "\"}"
+                    );
+                })
+            )
 
             // ─────────────────────────────────────────────
             // AUTHENTICATION PROVIDER
