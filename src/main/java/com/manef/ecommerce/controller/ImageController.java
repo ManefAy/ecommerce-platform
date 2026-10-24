@@ -141,12 +141,25 @@ public class ImageController {
      */
     @GetMapping("/products/{productId}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<List<ProductImage>> getProductImages(
+    public ResponseEntity<List<Map<String, Object>>> getProductImages(
             @PathVariable Long productId) {
 
         List<ProductImage> images = productImageRepository
                 .findByProductIdOrderByDisplayOrderAsc(productId);
 
-        return ResponseEntity.ok(images);
+        // Same shape as the upload response. Returning the entities directly
+        // fails (500): Jackson tries to serialize the lazy "product" proxy.
+        List<Map<String, Object>> response = images.stream()
+                .map(image -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", image.getId());
+                    item.put("imageUrl", image.getImageUrl());
+                    item.put("displayOrder", image.getDisplayOrder());
+                    item.put("productId", productId);
+                    return item;
+                })
+                .toList();
+
+        return ResponseEntity.ok(response);
     }
 }

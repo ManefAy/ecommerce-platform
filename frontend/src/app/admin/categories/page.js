@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 /**
  * Admin Categories Management Page
@@ -22,6 +23,8 @@ export default function AdminCategoriesPage() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -130,19 +133,24 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  // Delete category
-  const handleDelete = async (categoryId) => {
-    if (!confirm("Are you sure? This will also delete all subcategories."))
-      return;
-
+  // Delete category (runs after the admin confirms in ConfirmModal)
+  const handleDelete = async () => {
+    setDeleting(true);
     try {
-      await api.delete(`/categories/${categoryId}`, {
+      await api.delete(`/categories/${categoryToDelete.id}`, {
         headers: getAuthHeader(),
       });
       await fetchCategories();
+      toast.success("Category deleted.");
+      setCategoryToDelete(null);
     } catch (error) {
       console.error("Failed to delete category:", error);
-      toast.error("Cannot delete category. It may have products assigned to it.");
+      toast.error(
+        error.response?.data?.message ||
+          "Cannot delete category. It may have products assigned to it.",
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -197,7 +205,7 @@ export default function AdminCategoriesPage() {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(category.id)}
+                  onClick={() => setCategoryToDelete(category)}
                   className="text-red-500 hover:text-red-600 text-sm font-medium"
                 >
                   Delete
@@ -246,7 +254,7 @@ export default function AdminCategoriesPage() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(sub.id)}
+                        onClick={() => setCategoryToDelete(sub)}
                         className="text-red-500 hover:text-red-600 text-sm font-medium"
                       >
                         Delete
@@ -374,6 +382,19 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation */}
+      <ConfirmModal
+        open={!!categoryToDelete}
+        title={`Delete "${categoryToDelete?.name}"?`}
+        message={
+          categoryToDelete?.subCategories?.length > 0
+            ? `Its ${categoryToDelete.subCategories.length} subcategories will be deleted too. This cannot be undone.`
+            : "This cannot be undone."
+        }
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setCategoryToDelete(null)}
+      />
     </div>
   );
 }

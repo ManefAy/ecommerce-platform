@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import ConfirmModal from "@/components/admin/ConfirmModal";
 
 /**
  * Admin Products Management Page
@@ -30,6 +31,9 @@ export default function AdminProductsPage() {
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [productImages, setProductImages] = useState([]);
   const [showImageManager, setShowImageManager] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [imageToDelete, setImageToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -211,16 +215,21 @@ export default function AdminProductsPage() {
     }
   };
 
-  // Delete product
-  const handleDelete = async (productId) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+  // Delete product (runs after the admin confirms in ConfirmModal)
+  const handleDelete = async () => {
+    setDeleting(true);
     try {
-      await api.delete(`/products/${productId}`, {
+      await api.delete(`/products/${productToDelete.id}`, {
         headers: getAuthHeader(),
       });
       await fetchData();
+      toast.success("Product deleted.");
+      setProductToDelete(null);
     } catch (error) {
       console.error("Failed to delete product:", error);
+      toast.error(error.response?.data?.message || "Failed to delete product.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -275,17 +284,24 @@ export default function AdminProductsPage() {
     }
   };
 
-  // Delete image
-  const handleDeleteImage = async (imageId) => {
-    if (!confirm("Delete this image?")) return;
+  // Delete image (runs after the admin confirms in ConfirmModal)
+  const handleDeleteImage = async () => {
+    setDeleting(true);
     try {
-      await api.delete(`/images/${imageId}`, {
+      await api.delete(`/images/${imageToDelete.id}`, {
         headers: getAuthHeader(),
       });
-      setProductImages(productImages.filter((img) => img.id !== imageId));
+      setProductImages(
+        productImages.filter((img) => img.id !== imageToDelete.id),
+      );
       await fetchData();
+      toast.success("Image deleted.");
+      setImageToDelete(null);
     } catch (error) {
       console.error("Failed to delete image:", error);
+      toast.error("Failed to delete image. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -422,7 +438,7 @@ export default function AdminProductsPage() {
                         {product.active ? "Deactivate" : "Activate"}
                       </button>
                       <button
-                        onClick={() => handleDelete(product.id)}
+                        onClick={() => setProductToDelete(product)}
                         className="text-red-500 hover:text-red-600 text-sm font-medium"
                       >
                         Delete
@@ -665,7 +681,7 @@ export default function AdminProductsPage() {
                   />
                   <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button
-                      onClick={() => handleDeleteImage(image.id)}
+                      onClick={() => setImageToDelete(image)}
                       className="text-white text-xs font-medium bg-red-500 px-2 py-1 rounded-lg"
                     >
                       Delete
@@ -715,6 +731,23 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
+      {/* Delete Confirmations */}
+      <ConfirmModal
+        open={!!productToDelete}
+        title={`Delete "${productToDelete?.title}"?`}
+        message="This cannot be undone. To hide it for now, use Deactivate instead."
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setProductToDelete(null)}
+      />
+      <ConfirmModal
+        open={!!imageToDelete}
+        title="Delete this image?"
+        message="It will be removed from the product. This cannot be undone."
+        loading={deleting}
+        onConfirm={handleDeleteImage}
+        onCancel={() => setImageToDelete(null)}
+      />
     </div>
   );
 }

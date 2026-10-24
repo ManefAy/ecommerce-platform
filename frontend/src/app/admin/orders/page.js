@@ -23,6 +23,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   // Get admin token
   const getAuthHeader = () => {
@@ -113,7 +114,6 @@ export default function AdminOrdersPage() {
 
   // Cancel order
   const handleCancelOrder = async (orderId) => {
-    if (!confirm("Are you sure you want to cancel this order?")) return;
     setUpdating(true);
     try {
       await api.patch(
@@ -130,7 +130,19 @@ export default function AdminOrdersPage() {
       );
     } finally {
       setUpdating(false);
+      setConfirmingCancel(false);
     }
+  };
+
+  // Open / close the order modal (always start without the cancel prompt)
+  const openOrder = (order) => {
+    setConfirmingCancel(false);
+    setSelectedOrder(order);
+  };
+
+  const closeOrder = () => {
+    setConfirmingCancel(false);
+    setSelectedOrder(null);
   };
 
   const getStatusBadge = (status) => {
@@ -261,7 +273,7 @@ export default function AdminOrdersPage() {
                   </td>
                   <td className="py-3 px-4">
                     <button
-                      onClick={() => setSelectedOrder(order)}
+                      onClick={() => openOrder(order)}
                       className="text-green-600 hover:text-green-700 text-sm font-medium"
                     >
                       Manage
@@ -284,7 +296,7 @@ export default function AdminOrdersPage() {
                 {selectedOrder.orderNumber}
               </h2>
               <button
-                onClick={() => setSelectedOrder(null)}
+                onClick={closeOrder}
                 className="text-gray-400 hover:text-gray-600"
               >
                 ✕
@@ -388,16 +400,42 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
-            {/* Cancel Order */}
-            {selectedOrder.orderStatus === "PROCESSING" && (
-              <button
-                onClick={() => handleCancelOrder(selectedOrder.id)}
-                disabled={updating}
-                className="w-full bg-red-50 text-red-600 py-2.5 rounded-xl font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
-              >
-                Cancel Order
-              </button>
-            )}
+            {/* Cancel Order (two steps: ask, then confirm) */}
+            {selectedOrder.orderStatus === "PROCESSING" &&
+              (confirmingCancel ? (
+                <div className="bg-red-50 rounded-xl p-4">
+                  <p className="text-sm font-medium text-red-700 mb-1">
+                    Cancel this order?
+                  </p>
+                  <p className="text-xs text-red-600 mb-3">
+                    The items go back into stock. This cannot be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfirmingCancel(false)}
+                      disabled={updating}
+                      className="flex-1 bg-white text-gray-700 py-2 rounded-xl text-sm font-medium border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      Keep Order
+                    </button>
+                    <button
+                      onClick={() => handleCancelOrder(selectedOrder.id)}
+                      disabled={updating}
+                      className="flex-1 bg-red-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {updating ? "Canceling..." : "Yes, Cancel Order"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmingCancel(true)}
+                  disabled={updating}
+                  className="w-full bg-red-50 text-red-600 py-2.5 rounded-xl font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
+                >
+                  Cancel Order
+                </button>
+              ))}
           </div>
         </div>
       )}
